@@ -30,18 +30,18 @@ data "template_file" "ecs_task_definition_template" {
   }
 }
 
-resource "aws_ecs_task_definition" "springbootapp-task-definition" {
+resource "aws_ecs_task_definition" "sw-fargate-springbootapp-task-definition" {
   container_definitions     = data.template_file.ecs_task_definition_template.rendered
   family                    = var.ecs_service_name
   cpu                       = 512
   memory                    = var.memory
   requires_compatibilities  = ["FARGATE"]
   network_mode              = "awsvpc"
-  execution_role_arn        = aws_iam_role.fargate_iam_role.arn
-  task_role_arn             = aws_iam_role.fargate_iam_role.arn
+  execution_role_arn        = aws_iam_role.sw-fargate_iam_role.arn
+  task_role_arn             = aws_iam_role.sw-fargate_iam_role.arn
 }
 
-resource "aws_iam_role" "fargate_iam_role" {
+resource "aws_iam_role" "sw-fargate_iam_role" {
   name = "${var.ecs_service_name}-IAM-Role"
 
   assume_role_policy = <<EOF
@@ -60,9 +60,9 @@ resource "aws_iam_role" "fargate_iam_role" {
 EOF
 }
 
-resource "aws_iam_role_policy" "fargate_iam_policy" {
+resource "aws_iam_role_policy" "sw-fargate_iam_policy" {
   name = "${var.ecs_service_name}-IAM-Role"
-  role = aws_iam_role.fargate_iam_role.id
+  role = aws_iam_role.sw-fargate_iam_role.id
 
   policy = <<EOF
 {
@@ -84,16 +84,16 @@ resource "aws_iam_role_policy" "fargate_iam_policy" {
 EOF
 }
 
-resource "aws_ecs_service" "ecs_service" {
+resource "aws_ecs_service" "sw-ecs_service" {
   name            = var.ecs_service_name
   task_definition = var.ecs_service_name
   desired_count   = var.desired_task_number
-  cluster         = data.terraform_remote_state.platform.outputs.ecs_cluster_name
+  cluster         = data.terraform_remote_state.sw-ecs-confg.outputs.ecs_cluster_name
   launch_type     = "FARGATE"
 
   network_configuration {
-    # subnets           = [data.terraform_remote_state.platform.outputs.ecs_public_subnets]
-    subnets           = data.terraform_remote_state.platform.outputs.ecs_public_subnets
+    # subnets           = [data.terraform_remote_state.sw-ecs-confg.outputs.ecs_public_subnets]
+    subnets           = data.terraform_remote_state.sw-ecs-confg.outputs.ecs_public_subnets
     security_groups   = [aws_security_group.sw-fargate-app_security_group.id]
     assign_public_ip  = true
   }
@@ -152,7 +152,7 @@ resource "aws_alb_target_group" "sw-fargate-ecs_app_target_group" {
 }
 
 resource "aws_alb_listener_rule" "sw-fragate-ecs_alb_listener_rule" {
-  listener_arn = data.terraform_remote_state.platform.outputs.ecs_alb_listener_arn
+  listener_arn = data.terraform_remote_state.sw-ecs-confg.outputs.ecs_alb_listener_arn
   priority     = 100
 
   action {
@@ -162,11 +162,11 @@ resource "aws_alb_listener_rule" "sw-fragate-ecs_alb_listener_rule" {
 
   condition {
     host_header {
-      values = ["${lower(var.ecs_service_name)}.${data.terraform_remote_state.platform.outputs.ecs_domain_name}"]
+      values = ["${lower(var.ecs_service_name)}.${data.terraform_remote_state.sw-ecs-confg.outputs.ecs_domain_name}"]
     }
   }
 }
 
-resource "aws_cloudwatch_log_group" "springbootapp_log_group" {
+resource "aws_cloudwatch_log_group" "sw-springbootapp_log_group" {
   name = "${var.ecs_service_name}-LogGroup"
 }
