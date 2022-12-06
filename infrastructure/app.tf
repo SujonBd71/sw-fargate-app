@@ -6,7 +6,7 @@ terraform {
   backend "s3" {}
 }
 
-data "terraform_remote_state" "platform" {
+data "terraform_remote_state" "sw-ecs-confg" {
   backend = "s3"
 
   config = {
@@ -94,27 +94,27 @@ resource "aws_ecs_service" "ecs_service" {
   network_configuration {
     # subnets           = [data.terraform_remote_state.platform.outputs.ecs_public_subnets]
     subnets           = data.terraform_remote_state.platform.outputs.ecs_public_subnets
-    security_groups   = [aws_security_group.app_security_group.id]
+    security_groups   = [aws_security_group.sw-fargate-app_security_group.id]
     assign_public_ip  = true
   }
 
   load_balancer {
     container_name   = var.ecs_service_name
     container_port   = var.docker_container_port
-    target_group_arn = aws_alb_target_group.ecs_app_target_group.arn
+    target_group_arn = aws_alb_target_group.sw-fargate-ecs_app_target_group.arn
   }
 }
 
-resource "aws_security_group" "app_security_group" {
+resource "aws_security_group" "sw-fargate-app_security_group" {
   name        = "${var.ecs_service_name}-SG"
   description = "Security group for springbootapp to communicate in and out"
-  vpc_id      = data.terraform_remote_state.platform.outputs.vpc_id
+  vpc_id      = data.terraform_remote_state.sw-ecs-confg.outputs.vpc_id
 
   ingress {
     from_port   = 8080
     protocol    = "TCP"
     to_port     = 8080
-    cidr_blocks = [data.terraform_remote_state.platform.outputs.vpc_cidr_block]
+    cidr_blocks = [data.terraform_remote_state.sw-ecs-confg.outputs.vpc_cidr_block]
   }
 
   egress {
@@ -129,11 +129,11 @@ resource "aws_security_group" "app_security_group" {
   }
 }
 
-resource "aws_alb_target_group" "ecs_app_target_group" {
+resource "aws_alb_target_group" "sw-fargate-ecs_app_target_group" {
   name        = "${var.ecs_service_name}-TG"
   port        = var.docker_container_port
   protocol    = "HTTP"
-  vpc_id      = data.terraform_remote_state.platform.outputs.vpc_id
+  vpc_id      = data.terraform_remote_state.sw-ecs-confg.outputs.vpc_id
   target_type = "ip"
 
   health_check {
@@ -151,13 +151,13 @@ resource "aws_alb_target_group" "ecs_app_target_group" {
   }
 }
 
-resource "aws_alb_listener_rule" "ecs_alb_listener_rule" {
+resource "aws_alb_listener_rule" "sw-fragate-ecs_alb_listener_rule" {
   listener_arn = data.terraform_remote_state.platform.outputs.ecs_alb_listener_arn
   priority     = 100
 
   action {
     type             = "forward"
-    target_group_arn = aws_alb_target_group.ecs_app_target_group.arn
+    target_group_arn = aws_alb_target_group.sw-fargate-ecs_app_target_group.arn
   }
 
   condition {

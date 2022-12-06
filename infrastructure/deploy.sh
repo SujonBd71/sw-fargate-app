@@ -7,7 +7,7 @@ ECR_REPO_URL="${AWS_ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${SERVICE_NAME}"
 
 if [ "$1" = "build" ];then
     cd ..
-    sh mvnw clean install
+    mvn clean install
 elif [ "$1" = "test" ];then
     echo $SERVICE_NAME
     find ../target/ -type f \( -name "*.jar" -not -name "*sources.jar" \) -exec cp {} ../infrastructure/$SERVICE_NAME.jar \;
